@@ -61,6 +61,8 @@ data Comparator = Eq | Lt | Gt deriving Show
 
 -- FP3.2
 
+
+-- TO CHECK, ONE IMPLEMENTATION OF FIBONACCI GIVES F(0) = 1 AND THE OTHER F(0) = 0 
 fibonacci = Program [Procedure (Var "fibonacci") [IntParam (Var "n")] (If (Cond Eq (Var "n") (IntConst 0)) (Then (IntConst 0))
  (Else (If (Cond Eq (Var "n") (IntConst 1)) (Then (IntConst 1)) (Else ( Add 
     (Call "fibonacci" [IntParam (Sub (Var "n") (IntConst 1))])
