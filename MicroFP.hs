@@ -16,6 +16,7 @@ import Test.QuickCheck.All
 
 
 -- FP3.1 
+-- by Théo Mougnibas
 
 
 -- ⟨program⟩::=( ⟨function⟩ )+
@@ -60,6 +61,7 @@ data Condition = Cond Comparator Expr Expr
 data Comparator = Eq | Lt | Gt deriving Show
 
 -- FP3.2
+-- by Théo Mougnibas
 
 
 -- TO CHECK, ONE IMPLEMENTATION OF FIBONACCI GIVES F(0) = 1 AND THE OTHER F(0) = 0 
@@ -103,6 +105,7 @@ struct = Program [
 
 
 -- FP3.3
+-- by Théo Mougnibas
 
 -- pretty-printing
 
@@ -150,7 +153,10 @@ testProg = Program [
   ]
 
 
--- FP 3.4
+-- FP 3.4 
+-- by Théo Mougnibas
+
+
 eval :: Prog->String->[Integer]->Integer
 eval p@(Program ((Procedure (Var fname) params fbody):fs)) function_to_call args
     | fname == function_to_call = evalExpr fbody associated_args p
@@ -192,10 +198,14 @@ evalCond (Cond Lt e1 e2) args p = evalExpr e1 args p < evalExpr e2 args p
 evalCond (Cond Gt e1 e2) args p = evalExpr e1 args p > evalExpr e2 args p
 
 
--- eval fibonacci "fibonacci" [5]
+fibofive = eval fibonacci "fibonacci" [5]
+
 
 -- putStrLn $ pretty testProg
 
 -- QuickCheck: all prop_* tests
 return []
 check = $quickCheckAll
+
+
+-- TODO : comments, tests, type annotations and examples (not commented) should be available for all functions and features
