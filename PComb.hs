@@ -13,4 +13,29 @@ import Test.QuickCheck
 data Stream = Stream [Char]
               deriving (Eq, Show)
 
+data Parser a = P {
+    runParser :: Stream -> [(a, Stream)]
+}
 
+instance Functor Parser where
+    fmap f (P p) = P (\inStream -> [(f x, rest) | (x, rest) <- p inStream])
+
+char :: Char -> Parser Char
+char c = P p
+     where
+       p (Stream [])                 = []
+       p (Stream (x:xs)) | c == x    = [(x, (Stream xs))]
+                         | otherwise = []
+
+failure :: Parser a
+failure = P (\_ -> [])
+
+instance Applicative Parser where
+    pure x = P (\inStream -> [(x, inStream)])
+    (P pf) <*> (P px) = P (\inStream -> [(f a, restx) | (f, restf) <- pf inStream, (a, restx) <- px restf])
+
+instance Alternative Parser where
+    empty = failure
+    (P px) <|> (P py) = P p
+        where  p inStream | null (px inStream) = (py inStream)
+                          | otherwise = (px inStream)
