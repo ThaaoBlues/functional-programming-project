@@ -9,6 +9,7 @@ import Control.Applicative
 import Data.Char
 import Test.QuickCheck
 import PComb
+import GHC.Generics (C)
 
 
 -- FP2.2
@@ -27,11 +28,85 @@ whitespace p = parseWS *> (p <* parseWS)
 
 
 -- UTILISATION EXAMPLES
+example1 :: [(Char, Stream)]
 example1 = runParser (between (char 'a') (char 'b') (char 'a')) (Stream "aba")
+example2 :: [(Char, Stream)]
 example2 = runParser (whitespace (char 'a')) (Stream " a b ")
 
 -- TESTS
 
+test1 :: Bool
 test1 = runParser (between (char 'a') (char 'b') (char 'a')) (Stream "aba") == [('b', Stream "")]
+test2 :: Bool
 test2 = runParser (whitespace (char 'a')) (Stream " a b ") == [('a', Stream "b ")]
 
+-- FP2.1
+
+--parses any (alphabetical) letter
+letter :: Parser Char
+letter = P p 
+    where p (Stream []) = []
+          p (Stream (x:xs)) | isAlpha x = [(x,Stream xs)]
+                            | otherwise = []
+
+-- parses any digit
+dig :: Parser Char
+dig = P p 
+    where p (Stream []) = []
+          p (Stream (x:xs)) | isDigit x = [(x,Stream xs)]
+                            | otherwise = []
+
+
+-- UTILISATION EXAMPLES
+letterExample :: [(Char, Stream)]
+letterExample = runParser letter (Stream "a1b")
+digExample :: [(Char, Stream)]
+digExample = runParser dig (Stream "1aB")
+
+-- TESTS
+test3 :: Bool
+test3 = runParser letter (Stream "a1b") == [('a',Stream "1b")]
+test4 :: Bool
+test4 = null $ runParser letter (Stream "1b")
+
+test5 :: Bool
+test5 = runParser dig (Stream "1ba") == [('1',Stream "ba")]
+test6 :: Bool
+test6 = null $ runParser dig (Stream "b1a")
+
+
+-- FP2.3
+
+--parses one or more occurrences of p, separated by s
+sep1 :: Parser a -> Parser b -> Parser [a]
+sep1 p s = (:) <$> p <*> many (s *> p)
+
+
+-- The parser sep p s works as sep1 p s, but parses zero or more occurrences of p.
+sep :: Parser a -> Parser b -> Parser [a]
+sep p s = sep1 p s <|> failure
+
+
+-- tries to apply parser p; upon failure it results in x
+option :: 
+
+-- UTILISATION EXAMPLES
+
+exampleLetterList1 :: [( [Char], Stream)]
+exampleLetterList1 = runParser (sep1 letter (char ',')) (Stream "a,b,c")
+
+exampleLetterList2 :: [( [Char], Stream)]
+exampleLetterList2 = runParser (sep letter (char ',')) (Stream "")
+
+
+
+-- TESTS
+
+test7 :: Bool
+test7 = runParser (sep1 letter (char ',')) (Stream "a,b,c") == [("a,b,c",Stream [])]
+
+test8 :: Bool
+test8 = null $ runParser (sep letter (char ',')) (Stream "")
+
+
+-- TODO :: FIX sep1 AND finish option
