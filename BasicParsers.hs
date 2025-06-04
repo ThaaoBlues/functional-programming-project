@@ -16,13 +16,13 @@ import PComb
 -- runs the three
 -- parsers in sequence, and returns the result of the second parser.
 between :: Parser a -> Parser b -> Parser c -> Parser b
-between p1 p2 p3 = p1 *> (p2 <* p3) <|> failure
+between p1 p2 p3 = p1 *> (p2 <* p3)
 
 -- receives a parser p and uses it to parse
 -- the input stream, while skipping all surrounding whitespaces (space, tab and
 -- newline).
 whitespace :: Parser a -> Parser a
-whitespace p = parseWS *> (p <* parseWS) <|> failure
+whitespace p = parseWS *> (p <* parseWS)
             where parseWS = (char ' ') <|> (char '\n') <|> (char '\t')
 
 
@@ -90,7 +90,8 @@ sep p s = sep1 p s <|> failure
 
 
 -- tries to apply parser p; upon failure it results in x
---option :: 
+option :: a -> Parser a -> Parser a
+option x p = p <|> pure x
 
 -- UTILISATION EXAMPLES
 
@@ -100,7 +101,7 @@ exampleLetterList1 = runParser (sep1 letter (char ',')) (Stream "a,b,c")
 exampleLetterList2 :: [( [Char], Stream)]
 exampleLetterList2 = runParser (sep letter (char ',')) (Stream "")
 
-
+exampleOption = runParser (option 'x' (char 'c')) (Stream "test")
 
 -- TESTS
 
@@ -109,6 +110,13 @@ test7 = runParser (sep1 letter (char ',')) (Stream "a,b,c") == [("a,b,c",Stream 
 
 test8 :: Bool
 test8 = null $ runParser (sep letter (char ',')) (Stream "")
+
+test9 :: Bool
+test9 = runParser (option 'x' (char 'c')) (Stream "test") == [('x',Stream "test")]
+
+test10 :: Bool
+test10 = runParser (option 'x' (char 't')) (Stream "test") == [('t',Stream "est")]
+
 
 
 -- TODO :: FIX sep1 AND finish option
