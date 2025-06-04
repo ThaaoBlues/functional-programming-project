@@ -82,9 +82,9 @@ fib = Program [Procedure (Var "fibonacci") [IntParam (Var "n")] (If (Cond Eq (Va
     )        
     ) ) ) )]
 
-sum = Program [Procedure (Var "sum") [IntParam (Var "a")] (If (Cond Eq (Var "a") (IntConst 0)) (Then (IntConst 0)) (Else (Add (Var "a") (Call "sum" [IntParam (Sub (Var "a") (IntConst 1))] ))))]
+sumProg = Program [Procedure (Var "sum") [IntParam (Var "a")] (If (Cond Eq (Var "a") (IntConst 0)) (Then (IntConst 0)) (Else (Add (Var "a") (Call "sum" [IntParam (Sub (Var "a") (IntConst 1))] ))))]
 
-div = Program [Procedure (Var "div") [IntParam (Var "x"), IntParam (Var "y")] (
+divProg = Program [Procedure (Var "div") [IntParam (Var "x"), IntParam (Var "y")] (
     If (Cond Lt (Var "x") (Var "y"))
        (IntConst 0)
        (Add (IntConst 1) (Call "div" [IntParam (Sub (Var "x") (Var "y")), IntParam (Var "y")]))
@@ -103,28 +103,43 @@ struct = Program [
   Procedure (Var "eleven") [] (Call "inc" [IntParam (IntConst 10)])
   ]
 
+-- UTILISATION EXAMPLE ???
+
+-- TESTS ???
+
+
 
 -- FP3.3
 -- by Théo Mougnibas
 
 -- pretty-printing
 
+
+-- MAIN FUNCTION
+-- the one to be called to print a whole program
 pretty :: Prog -> String
 pretty (Program procedures) = foldr (\x s-> x ++ "\n"++ s) "" $ map prettyProcedure procedures
 -- the foldr is to build a global string with all precedures separated by newlines
 
+
+-- HELPER FUNCTIONS
+
+-- build string representing a procedure data type
 prettyProcedure :: Procedure -> String
 prettyProcedure (Procedure name params expr) =
   prettyExpr name ++ " " ++ foldr (\x s-> x ++ " "++ s) "" (map prettyParam params) ++ " := " ++ prettyExpr expr ++ ";"
 -- the foldr is to build a global string with all parameters separated by spaces
 
+
+-- build string representing a Param data type
 prettyParam :: Param -> String
 prettyParam (IdParam expr) = prettyExpr expr
 prettyParam (IntParam expr) = prettyExpr expr
 
+-- build string representing a Expr data type
 prettyExpr :: Expr -> String
-prettyExpr (IntConst i) = show i
-prettyExpr (Var s) = s
+prettyExpr (IntConst i) = show i -- int
+prettyExpr (Var s) = s -- simple String identifier
 prettyExpr (Mult e1 e2) = "(" ++ prettyExpr e1 ++ " * " ++ prettyExpr e2 ++ ")"
 prettyExpr (Add e1 e2) = "(" ++ prettyExpr e1 ++ " + " ++ prettyExpr e2 ++ ")"
 prettyExpr (Sub e1 e2) = "(" ++ prettyExpr e1 ++ " - " ++ prettyExpr e2 ++ ")"
@@ -137,68 +152,98 @@ prettyExpr (Call func params) = func ++ "(" ++ foldr (\x s -> prettyParam x ++ s
 prettyExpr (Then e) = " then {\n\t" ++ prettyExpr e ++ "\n}"
 prettyExpr (Else e) = " else {\n\t" ++ prettyExpr e ++ "\n}\n"
 
+-- build string representing a Condition data type
 prettyCondition :: Condition -> String
 prettyCondition (Cond cmp e1 e2) =
   prettyExpr e1 ++ " " ++ prettyComparator cmp ++ " " ++ prettyExpr e2
 
+-- build string representing a the comparator used in a Condition
 prettyComparator :: Comparator -> String
 prettyComparator Eq = "=="
 prettyComparator Lt = "<"
 prettyComparator Gt = ">"
 
+-- UTILISATION EXAMPLE
+printFibo = putStrLn $ pretty fibonacci
 
-testProg = Program [
-  Procedure (Var "foo") [IntParam (Var "x"), IntParam (IntConst 5)] (Add (Var "x") (IntConst 1)),
-  Procedure (Var "bar") [] (If (Cond Lt (Then (Var "a")) (Else (IntConst 10))) (IntConst 1) (IntConst 0))
-  ]
+-- TESTS
+testPrettyFibonacci :: Bool
+testPrettyFibonacci = pretty fibonacci == expected
+  where expected = "fibonacci n := if (n == 0) then {\n\t0\n} else {\n\tif (n == 1) then {\n\t1\n} else {\n\t(fibonacci((n - 1)) + fibonacci((n - 2)))\n}\n}"
+
+
 
 
 -- FP 3.4 
 -- by Théo Mougnibas
 
 
+-- MAIN FUNCTION
 eval :: Prog->String->[Integer]->Integer
 eval p@(Program ((Procedure (Var fname) params fbody):fs)) function_to_call args
     | fname == function_to_call = evalExpr fbody associated_args p
     | otherwise = eval (Program fs) function_to_call args
-    where associated_args = zip params args
+    -- associate every parameter's value with its identifier String
+    where associated_args = zip params args 
+
+-- HELPER FUNCTIONS
 
 
+-- find an argument value from its variable identifier
 findArgValue::[(Param,Integer)]->String->Integer
 findArgValue ((IntParam (Var argname),value):args) varname 
     | varname == argname = value
     | otherwise = findArgValue args varname
 
 
+-- Biggest helper function, will evaluate an Expr
+-- The parameters are used here
 evalExpr :: Expr->[(Param,Integer)]->Prog->Integer
 evalExpr (IntConst x) _ _ = x
 evalExpr (Var x) args _ = findArgValue args x -- assume local variable declaration is not possible as this is FP
+-- basic operations
 evalExpr (Mult e1 e2)args p= evalExpr e1 args p * evalExpr e2 args p
 evalExpr (Add e1 e2) args p = evalExpr e1 args p + evalExpr e2 args p
 evalExpr (Sub e1 e2) args p = evalExpr e1 args p - evalExpr e2 args p
 
+-- If/Else
 evalExpr (If cond e1 e2) args p
   | evalCond cond args p = evalExpr e1 args p
   | otherwise = evalExpr e2 args p
-
 evalExpr (Then e) args p = evalExpr e args p
 evalExpr (Else e) args p = evalExpr e args p
+
+-- function call
 evalExpr (Call fname params) args p = eval p fname $ evalParams params args p
 
+
+
 -- evaluate parameters to call a function from another function context
+-- will return the actuak values of the parameters
 evalParams::[Param]->[(Param,Integer)]->Prog->[Integer]
--- only IntParam as we don't do higher order functions
+-- only IntParam as we don't do higher order functions (so IdParam is not matched)
 evalParams [IntParam e] args p = [evalExpr e args p]
 evalParams ((IntParam e):xs) args p = evalExpr e args p : evalParams xs args p
 
 
+-- Do the comparison inside a Condition
+-- and then contextually evaluate the "then" or the "else" Expr of said Condition 
 evalCond :: Condition->[(Param,Integer)]->Prog->Bool
 evalCond (Cond Eq e1 e2) args p = evalExpr e1 args p == evalExpr e2 args p
 evalCond (Cond Lt e1 e2) args p = evalExpr e1 args p < evalExpr e2 args p
 evalCond (Cond Gt e1 e2) args p = evalExpr e1 args p > evalExpr e2 args p
 
 
+-- UTILISATION EXAMPLE
 fibofive = eval fibonacci "fibonacci" [5]
+
+
+-- TESTS
+testEvalSum :: Bool
+testEvalSum = eval sumProg "sum" [5] == 15
+
+testEvalFibonacci :: Bool
+testEvalFibonacci = eval fibonacci "fibonacci" [5] == 5
 
 
 -- putStrLn $ pretty testProg
