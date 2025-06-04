@@ -9,7 +9,6 @@ import Control.Applicative
 import Data.Char
 import Test.QuickCheck
 import PComb
-import GHC.Generics (C)
 
 
 -- FP2.2
@@ -17,13 +16,13 @@ import GHC.Generics (C)
 -- runs the three
 -- parsers in sequence, and returns the result of the second parser.
 between :: Parser a -> Parser b -> Parser c -> Parser b
-between p1 p2 p3 = p1 *> (p2 <* p3)
+between p1 p2 p3 = p1 *> (p2 <* p3) <|> failure
 
 -- receives a parser p and uses it to parse
 -- the input stream, while skipping all surrounding whitespaces (space, tab and
 -- newline).
 whitespace :: Parser a -> Parser a
-whitespace p = parseWS *> (p <* parseWS)
+whitespace p = parseWS *> (p <* parseWS) <|> failure
             where parseWS = (char ' ') <|> (char '\n') <|> (char '\t')
 
 
@@ -77,10 +76,13 @@ test6 = null $ runParser dig (Stream "b1a")
 
 -- FP2.3
 
+-- only allows parsers that consume input
+notEmpty :: Parser a -> Parser a
+notEmpty (P p) = P (\s -> [ (x, rest) | (x, rest) <- p s, rest /= s ])
+
 --parses one or more occurrences of p, separated by s
 sep1 :: Parser a -> Parser b -> Parser [a]
-sep1 p s = (:) <$> p <*> many (s *> p)
-
+sep1 p s = (:) <$> p <*> many ( s *> p)
 
 -- The parser sep p s works as sep1 p s, but parses zero or more occurrences of p.
 sep :: Parser a -> Parser b -> Parser [a]
@@ -88,7 +90,7 @@ sep p s = sep1 p s <|> failure
 
 
 -- tries to apply parser p; upon failure it results in x
-option :: 
+--option :: 
 
 -- UTILISATION EXAMPLES
 

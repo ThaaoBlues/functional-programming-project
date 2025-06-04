@@ -246,8 +246,6 @@ testEvalFibonacci :: Bool
 testEvalFibonacci = eval fibonacci "fibonacci" [5] == 5
 
 
--- putStrLn $ pretty testProg
-
 -- QuickCheck: all prop_* tests
 return []
 check = $quickCheckAll

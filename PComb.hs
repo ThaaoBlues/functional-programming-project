@@ -36,6 +36,9 @@ instance Applicative Parser where
 
 instance Alternative Parser where
     empty = failure
-    (P px) <|> (P py) = P p
-        where  p inStream | null (px inStream) = (py inStream)
-                          | otherwise = (px inStream)
+    (<|>) :: Parser a -> Parser a -> Parser a
+    p1 <|> p2 = P p
+        where  p inStream | null $ runParser p1 inStream = runParser p2 inStream
+                          | otherwise = runParser p1 inStream
+
+
