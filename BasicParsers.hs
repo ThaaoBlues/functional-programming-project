@@ -76,10 +76,6 @@ test6 = null $ runParser dig (Stream "b1a")
 
 -- FP2.3
 
--- only allows parsers that consume input
-notEmpty :: Parser a -> Parser a
-notEmpty (P p) = P (\s -> [ (x, rest) | (x, rest) <- p s, rest /= s ])
-
 --parses one or more occurrences of p, separated by s
 sep1 :: Parser a -> Parser b -> Parser [a]
 sep1 p s = (:) <$> p <*> many ( s *> p)
@@ -119,4 +115,61 @@ test10 = runParser (option 'x' (char 't')) (Stream "test") == [('t',Stream "est"
 
 
 
--- TODO :: FIX sep1 AND finish option
+-- FP2.4
+
+-- parses an given String, similar to the function char
+string:: String->Parser String
+-- base case different from char Parser as we must return a String
+string s@[x] = P p
+    where p (Stream []) = []
+          p (Stream (c:cs)) | c == x = [(s,Stream cs)]
+                         | otherwise = []
+
+string (x:xs) = (:) <$> char x <*> string xs
+
+-- parses an identifier surrounded by whites-pace
+identifier :: Parser String
+identifier = char ' ' *> (many (letter <|> dig) <* char ' ')
+
+-- parses an integer surrounded by whitespace.
+integer :: Parser Integer
+integer = read <$> many dig
+
+-- parses a given string surrounded by white-space
+symbol :: String->Parser String
+symbol s = char ' ' *> (string s <* char ' ')
+
+-- parses something using the provided parser between parentheses
+parens :: Parser a -> Parser a
+parens p = char '(' *> (p <* char ')')
+
+-- parses something using the provided parser between braces.
+braces :: Parser a -> Parser a
+braces p = char '{' *> (p <* char '}')
+
+
+-- UTILISATION EXAMPLE
+exampleString = runParser (string "ceci est") (Stream "ceci est un exemple")
+exampleIdentifier = runParser identifier (Stream " function := x==1")
+
+exampleInteger = runParser integer (Stream "123456 aha")
+
+exampleSymbol = runParser (symbol "ceci") (Stream " ceci est un exemple")
+
+exampleParens = runParser (parens $ string "test entre parentheses") (Stream "(test entre parentheses)")
+
+exampleBraces = runParser (braces $ string "test entre accolades") (Stream "{test entre accolades}")
+
+-- TESTS
+
+test11 = runParser (string "ceci est") (Stream "ceci est un exemple") == [("ceci est",Stream " un exemple")]
+
+test12 = runParser identifier (Stream " function := x==1") == [("function",Stream ":= x==1")]
+
+test13 = runParser integer (Stream "123456 aha") == [(123456,Stream " aha")]
+
+test14 = runParser (symbol "ceci") (Stream " ceci est un exemple") == [("ceci",Stream "est un exemple")]
+
+test15 = runParser (parens $ string "test entre parentheses") (Stream "(test entre parentheses)") == [("test entre parentheses", Stream [])]
+
+test16 = runParser (braces $ string "test entre accolades") (Stream "{test entre accolades}") == [("test entre accolades", Stream [])]

@@ -250,5 +250,3 @@ testEvalFibonacci = eval fibonacci "fibonacci" [5] == 5
 return []
 check = $quickCheckAll
 
-
--- TODO : comments, tests, type annotations and examples (not commented) should be available for all functions and features
