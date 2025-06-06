@@ -38,7 +38,7 @@ data Procedure = Procedure String [Param] Expr
             deriving Show
 
 -- | Represents a parameter which can be an identifier or an integer
-data Param = IdParam Expr | IntParam Expr
+data Param = Param Expr
   deriving Show
 
 data Expr = IntConst Integer
@@ -60,44 +60,44 @@ data Comparator = Eq | Lt | Gt deriving Show
 
 
 -- TO CHECK, ONE IMPLEMENTATION OF FIBONACCI GIVES F(0) = 1 AND THE OTHER F(0) = 0 
-fibonacci = Program [Procedure "fibonacci" [IntParam (Var "n")] (If (Cond Eq (Var "n") (IntConst 0)) (IntConst 0)
+fibonacci = Program [Procedure "fibonacci" [Param (Var "n")] (If (Cond Eq (Var "n") (IntConst 0)) (IntConst 0)
  (If (Cond Eq (Var "n") (IntConst 1)) (IntConst 1) ( Add 
-    (Call "fibonacci" [IntParam (Sub (Var "n") (IntConst 1))])
-    (Call "fibonacci" [IntParam (Sub (Var "n") (IntConst 2))] )
+    (Call "fibonacci" [Param (Sub (Var "n") (IntConst 1))])
+    (Call "fibonacci" [Param (Sub (Var "n") (IntConst 2))] )
     )
 
   ) 
   )]
 
 
-fib = Program [Procedure "fib" [IntParam (Var "n")] (If (Cond Eq (Var "n") (IntConst 0)) (IntConst 0)
+fib = Program [Procedure "fib" [Param (Var "n")] (If (Cond Eq (Var "n") (IntConst 0)) (IntConst 0)
  (If (Cond Eq (Var "n") (IntConst 1)) (IntConst 1) ( Add 
-    (Call "fib" [IntParam (Sub (Var "n") (IntConst 1))])
-    (Call "fib" [IntParam (Sub (Var "n") (IntConst 2))] )
+    (Call "fib" [Param (Sub (Var "n") (IntConst 1))])
+    (Call "fib" [Param (Sub (Var "n") (IntConst 2))] )
     )
 
   ) 
   )]
 
-sumProg = Program [Procedure "sum" [IntParam (Var "a")] (If (Cond Eq (Var "a") (IntConst 0)) (IntConst 0) (Add (Var "a") (Call "sum" [IntParam (Sub (Var "a") (IntConst 1))] )))]
+sumProg = Program [Procedure "sum" [Param (Var "a")] (If (Cond Eq (Var "a") (IntConst 0)) (IntConst 0) (Add (Var "a") (Call "sum" [Param (Sub (Var "a") (IntConst 1))] )))]
 
-divProg = Program [Procedure "div" [IntParam (Var "x"), IntParam (Var "y")] (
+divProg = Program [Procedure "div" [Param (Var "x"), Param (Var "y")] (
     If (Cond Lt (Var "x") (Var "y"))
        (IntConst 0)
-       (Add (IntConst 1) (Call "div" [IntParam (Sub (Var "x") (Var "y")), IntParam (Var "y")]))
+       (Add (IntConst 1) (Call "div" [Param (Sub (Var "x") (Var "y")), Param (Var "y")]))
   )]
 
-twice =   Program [Procedure "twice" [IdParam (Var "f"), IntParam (Var "x")] (
-    Call "f" [IntParam (Call "f" [IntParam (Var "x")])]
+twice =   Program [Procedure "twice" [Param (Var "f"), Param (Var "x")] (
+    Call "f" [Param (Call "f" [Param (Var "x")])]
   )
   ]
 
 
 
 struct = Program [
-  Procedure "add" [IntParam (Var "x"), IntParam (Var "y")] (Add (Var "x") (Var "y")),
-  Procedure "inc" [IntParam (Var "x")] (Call "add" [IntParam (IntConst 1)]),
-  Procedure "eleven" [] (Call "inc" [IntParam (IntConst 10)])
+  Procedure "add" [Param (Var "x"), Param (Var "y")] (Add (Var "x") (Var "y")),
+  Procedure "inc" [Param (Var "x")] (Call "add" [Param (IntConst 1)]),
+  Procedure "eleven" [] (Call "inc" [Param (IntConst 10)])
   ]
 
 -- UTILISATION EXAMPLE ???
@@ -130,8 +130,7 @@ prettyProcedure (Procedure name params expr) =
 
 -- build string representing a Param data type
 prettyParam :: Param -> String
-prettyParam (IdParam expr) = prettyExpr expr
-prettyParam (IntParam expr) = prettyExpr expr
+prettyParam  (Param expr) = prettyExpr expr
 
 -- build string representing a Expr data type
 prettyExpr :: Expr -> String
@@ -186,7 +185,7 @@ eval p@(Program ((Procedure fname params fbody):fs)) function_to_call args
 
 -- find an argument value from its variable identifier
 findArgValue::[(Param,Integer)]->String->Integer
-findArgValue ((IntParam (Var argname),value):args) varname 
+findArgValue ((Param (Var argname),value):args) varname 
     | varname == argname = value
     | otherwise = findArgValue args varname
 
@@ -214,9 +213,9 @@ evalExpr (Call fname params) args p = eval p fname $ evalParams params args p
 -- evaluate parameters to call a function from another function context
 -- will return the actuak values of the parameters
 evalParams::[Param]->[(Param,Integer)]->Prog->[Integer]
--- only IntParam as we don't do higher order functions (so IdParam is not matched)
-evalParams [IntParam e] args p = [evalExpr e args p]
-evalParams ((IntParam e):xs) args p = evalExpr e args p : evalParams xs args p
+-- only Param as we don't do higher order functions (so Param is not matched)
+evalParams [Param e] args p = [evalExpr e args p]
+evalParams ((Param e):xs) args p = evalExpr e args p : evalParams xs args p
 
 
 -- Do the comparison inside a Condition
@@ -239,67 +238,66 @@ testEvalFibonacci :: Bool
 testEvalFibonacci = eval fibonacci "fibonacci" [5] == 5
 
 
--- factor :: Parser Expr
--- factor =
---       whitespace intConst
---   <|> whitespace ifExpr
---   <|> whitespace functionCall
---   <|> whitespace <*> parens expr
---   <|> whitespace variable
+factor :: Parser Expr
+factor =
+      whitespace intConst
+  <|> whitespace ifExpr
+  <|> whitespace functionCall
+  <|> whitespace (parens expr)
+  <|> whitespace variable
 
--- intConst :: Parser Expr
--- intConst = IntConst <$> integer
+intConst :: Parser Expr
+intConst = IntConst <$> integer
 
--- variable :: Parser Expr
--- variable = Var <$> many letter
+variable :: Parser Expr
+variable = Var <$> identifier
 
 
--- expr :: Parser Expr
--- expr = 
+expr :: Parser Expr
+expr = term <|> 
+       Add <$> term <* char '+' *> expr <|>
+       Sub <$> term <* char '-' *> expr
 
--- -- term :: Parser Expr
--- -- term = factor <|> factor <* char '*' *> term
+term :: Parser Expr
+term = factor <|> factor <* char '*' *> term
 
--- ifExpr :: Parser Expr
--- ifExpr =
---   string "if" *>
---   ( If <$> parens condition <*
+ifExpr :: Parser Expr
+ifExpr =
+  string "if" *>
+  ( If <$> parens condition <*
   
---   string "then" *>
+  string "then" *>
   
---   (Then <$> braces expr) <*
+  braces expr <* -- Then
   
---   string "else" *>
+  string "else" *>
   
---   (Else <$> braces expr ) 
+  braces expr -- Else
   
---   )
+  )
 
--- functionCall :: Parser Expr
--- functionCall =
---   many letter >>= \name ->
---   option [] (parens (sep param (char ','))) >>= \args ->
---   pure (Call name args)
+param :: Parser Param
+param = Param . Var <$> identifier
 
-
-
+functionCall :: Parser Expr
+functionCall =
+  Call <$> identifier <*> option [] (parens (sep param (char ',')))
 
 
+condition :: Parser Condition
+condition =
+  Cond <$> 
+  comparator <*>
+  expr <*>  -- teh
+  expr  -- else
 
--- condition :: Parser Condition
--- condition =
---   Cond <$> 
---   expr <*> 
---   comparator <*>
---   expr
+  -- pure (Cond cmp e1 e2)
 
---   -- pure (Cond cmp e1 e2)
-
--- comparator :: Parser Comparator
--- comparator =
---       pure Eq <$ string "=="
---   <|> pure Lt <$ char '<'
---   <|> pure Gt <$ char '>'
+comparator :: Parser Comparator
+comparator =
+      pure Eq <$ string "=="
+  <|> pure Lt <$ char '<'
+  <|> pure Gt <$ char '>'
 
 
 

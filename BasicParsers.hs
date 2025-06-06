@@ -40,20 +40,15 @@ test2 :: Bool
 test2 = runParser (whitespace (char 'a')) (Stream " a b ") == [('a', Stream "b ")]
 
 -- FP2.1
-
---parses any (alphabetical) letter
 letter :: Parser Char
-letter = P p 
-    where p (Stream []) = []
-          p (Stream (x:xs)) | isAlpha x = [(x,Stream xs)]
-                            | otherwise = []
+
+-- fold the alphabet with an alternative operator
+letter = foldr (\c p -> char c <|> p) failure $ ['a'..'z'] ++ ['A'..'Z']
 
 -- parses any digit
 dig :: Parser Char
-dig = P p 
-    where p (Stream []) = []
-          p (Stream (x:xs)) | isDigit x = [(x,Stream xs)]
-                            | otherwise = []
+dig = foldr (\c p -> char c <|> p) failure ['0'..'9']
+
 
 
 -- UTILISATION EXAMPLES
@@ -117,15 +112,11 @@ test10 = runParser (option 'x' (char 't')) (Stream "test") == [('t',Stream "est"
 
 -- FP2.4
 
+
 -- parses an given String, similar to the function char
 string:: String->Parser String
--- base case different from char Parser as we must return a String
-string s@[x] = P p
-    where p (Stream []) = []
-          p (Stream (c:cs)) | c == x = [(s,Stream cs)]
-                         | otherwise = []
-
-string (x:xs) = (:) <$> char x <*> string xs
+-- base case different from char Parser as we must return an empty list
+string = foldr (\ x -> (<*>) ((:) <$> char x)) (pure [])
 
 -- parses an identifier surrounded by whites-pace
 identifier :: Parser String
