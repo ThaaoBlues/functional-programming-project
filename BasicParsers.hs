@@ -23,7 +23,7 @@ between p1 p2 p3 = p1 *> (p2 <* p3)
 -- newline).
 whitespace :: Parser a -> Parser a
 whitespace p = parseWS *> (p <* parseWS)
-            where parseWS = (char ' ') <|> (char '\n') <|> (char '\t')
+            where parseWS = many (char ' ' <|> char '\n' <|> char '\t')
 
 
 -- UTILISATION EXAMPLES
@@ -77,7 +77,7 @@ sep1 p s = (:) <$> p <*> many ( s *> p)
 
 -- The parser sep p s works as sep1 p s, but parses zero or more occurrences of p.
 sep :: Parser a -> Parser b -> Parser [a]
-sep p s = sep1 p s <|> failure
+sep p s = sep1 p s <|> pure []
 
 
 -- tries to apply parser p; upon failure it results in x
@@ -120,15 +120,15 @@ string = foldr (\ x -> (<*>) ((:) <$> char x)) (pure [])
 
 -- parses an identifier surrounded by whites-pace
 identifier :: Parser String
-identifier = char ' ' *> (many (letter <|> dig) <* char ' ')
+identifier = whitespace (many (letter <|> dig))
 
 -- parses an integer surrounded by whitespace.
 integer :: Parser Integer
-integer = read <$> many dig
+integer = read <$> some dig
 
 -- parses a given string surrounded by white-space
 symbol :: String->Parser String
-symbol s = char ' ' *> (string s <* char ' ')
+symbol s =whitespace (string s)
 
 -- parses something using the provided parser between parentheses
 parens :: Parser a -> Parser a

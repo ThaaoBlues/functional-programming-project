@@ -10,9 +10,6 @@ module MicroFP where
 import Control.Applicative
 import PComb
 import BasicParsers
-import Test.QuickCheck
-import Test.QuickCheck.All
-
 
 
 -- FP3.1 
@@ -32,14 +29,14 @@ import Test.QuickCheck.All
 -- ’<’ | ’==’ | ’>’
 
 newtype Prog = Program [Procedure]
-            deriving Show
+            deriving (Show, Eq)
 
 data Procedure = Procedure String [Param] Expr
-            deriving Show
+            deriving (Show, Eq)
 
 -- | Represents a parameter which can be an identifier or an integer
 data Param = Param Expr
-  deriving Show
+  deriving (Show, Eq)
 
 data Expr = IntConst Integer
           | Var String
@@ -48,12 +45,12 @@ data Expr = IntConst Integer
           | Sub Expr Expr
           | If Condition Expr Expr
           | Call String [Param]
-          deriving Show
+          deriving (Show, Eq)
 
 data Condition = Cond Comparator Expr Expr
-                deriving Show
+                deriving (Show, Eq)
 
-data Comparator = Eq | Lt | Gt deriving Show
+data Comparator = Eq | Lt | Gt deriving (Show, Eq)
 
 -- FP3.2
 -- by Théo Mougnibas
@@ -238,71 +235,147 @@ testEvalFibonacci :: Bool
 testEvalFibonacci = eval fibonacci "fibonacci" [5] == 5
 
 
+-- FP4.1
+
+
 factor :: Parser Expr
 factor =
-      whitespace intConst
-  <|> whitespace ifExpr
-  <|> whitespace functionCall
-  <|> whitespace (parens expr)
-  <|> whitespace variable
+      intConst
+  <|> ifExpr
+  <|> functionCall
+  <|> variable
+  <|> parens expr
 
 intConst :: Parser Expr
 intConst = IntConst <$> integer
 
 variable :: Parser Expr
-variable = Var <$> identifier
+variable = Var <$> some (letter <|> dig)
 
 
 expr :: Parser Expr
-expr = term <|> 
-       Add <$> term <* char '+' *> expr <|>
-       Sub <$> term <* char '-' *> expr
+expr =  
+       Add <$> term <*> (whitespace (char '+') *> expr) <|>
+       Sub <$> term <*> (whitespace (char '-') *> expr) <|>
+       term
 
 term :: Parser Expr
-term = factor <|> factor <* char '*' *> term
+term = Mult <$> factor <*> (whitespace (char '*') *> term) <|> factor
 
 ifExpr :: Parser Expr
 ifExpr =
   string "if" *>
-  ( If <$> parens condition <*
+  ( If <$> whitespace (parens condition) <*>
   
-  string "then" *>
+  (string "then" *>
   
-  braces expr <* -- Then
+  whitespace (braces expr) )<*> -- Then
   
-  string "else" *>
+  (string "else" *>
   
-  braces expr -- Else
+  whitespace (braces expr) ) -- Else
   
   )
 
+
 param :: Parser Param
-param = Param . Var <$> identifier
+param = Param <$> expr
+
+functionParser :: Parser Procedure 
+functionParser = Procedure <$> 
+  identifier <*> 
+  sep param (char ' ') <*>
+  (whitespace (string ":=") *> 
+  expr) <*
+  char ';'
 
 functionCall :: Parser Expr
 functionCall =
-  Call <$> identifier <*> option [] (parens (sep param (char ',')))
+  Call <$> identifier <*> parens (sep param (char ','))
 
 
 condition :: Parser Condition
-condition =
-  Cond <$> 
-  comparator <*>
-  expr <*>  -- teh
-  expr  -- else
+-- funky function to re-order arguments to the Cond data constructor
+condition = (\e1 cmp e2-> Cond cmp e1 e2) <$> expr <*>(whitespace comparator) <*> expr  
 
   -- pure (Cond cmp e1 e2)
 
 comparator :: Parser Comparator
 comparator =
-      pure Eq <$ string "=="
-  <|> pure Lt <$ char '<'
-  <|> pure Gt <$ char '>'
+      Eq <$ string "=="
+  <|> Lt <$ char '<'
+  <|> Gt <$ char '>'
+
+program :: Parser Prog
+program = Program <$> whitespace (some functionParser)
+
+
+-- FP4.1 parser tests
+
+check :: (Eq a, Show a) => String -> a -> a -> IO ()
+check label expected actual =
+  if expected == actual
+    then putStrLn $ "[PASS] " ++ label
+    else do
+      putStrLn $ "[FAIL] " ++ label
+      putStrLn $ "  Expected: " ++ show expected
+      putStrLn $ "  Actual:   " ++ show actual
+
+
+testIntConst = runParser intConst (Stream "42")
+
+testVariable = check "variable"
+  [(Var "x", Stream " y")]
+  (runParser variable (Stream "x y"))
+
+testAddExpr = check "addition"
+  [(Add (IntConst 1) (IntConst 2), Stream "")]
+  (runParser expr (Stream "1+2"))
+
+testSubExpr = check "subtraction"
+  [(Sub (IntConst 3) (IntConst 1), Stream "")]
+  (runParser expr (Stream "3-1"))
+
+testMultExpr = check "multiplication"
+  [(Mult (IntConst 2) (IntConst 4), Stream "")]
+  (runParser term (Stream "2*4"))
+
+testIfExpr = check "ifExpr"
+  [(If (Cond Gt (Var "x") (IntConst 0)) (IntConst 1) (IntConst 2), Stream "")]
+  (runParser ifExpr (Stream "if (x > 0) then {1} else {2} "))
+
+testFunctionCall = check "functionCall"
+  [(Call "f" [Param (Var "x")], Stream "")]
+  (runParser functionCall (Stream "f (x)"))
+testComparator :: IO ()
+
+testComparator = do
+  check "comparator ==" Eq (fst . head $ runParser comparator (Stream "=="))
+  check "comparator <" Lt (fst . head $ runParser comparator (Stream "<"))
+  check "comparator >" Gt (fst . head $ runParser comparator (Stream ">"))
+
+testCondition = check "condition"
+  [(Cond Lt (Var "x") (IntConst 2), Stream "")]
+  (runParser condition (Stream "x < 2"))
+
+testFunctionParser = check "functionParser"
+  [(Procedure "f" [Param (Var "x")] (Add (Var "x") (IntConst 1)), Stream "")]
+  (runParser functionParser (Stream "f x := x + 1;"))
+
+testProgramParser =
+  let input = "f x := x + 1; g y := y * 2;"
+      result = runParser program (Stream input)
+      Program fs = fst (head result)
+      names = map (\(Procedure name _ _) -> name) fs
+  in check "programParser (function names)" ["f", "g"] names
 
 
 
+-- FP4.2
 
--- QuickCheck: all prop_* tests
-return []
-check = $quickCheckAll
+compile :: String -> Prog
+compile s = fst. head $ runParser program (Stream s)
+
+testcompile = compile "fib n := if (n < 3) then {1} else {fib (n-1) + fib (n-2)};"
+
 
