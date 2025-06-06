@@ -173,3 +173,7 @@ test14 = runParser (symbol "ceci") (Stream " ceci est un exemple") == [("ceci",S
 test15 = runParser (parens $ string "test entre parentheses") (Stream "(test entre parentheses)") == [("test entre parentheses", Stream [])]
 
 test16 = runParser (braces $ string "test entre accolades") (Stream "{test entre accolades}") == [("test entre accolades", Stream [])]
+
+
+
+

@@ -34,10 +34,7 @@ import Test.QuickCheck.All
 newtype Prog = Program [Procedure]
             deriving Show
 
-data Procedure = Procedure Expr [Param] Expr
-            deriving Show
-
-newtype Identifier = Identifier Expr
+data Procedure = Procedure String [Param] Expr
             deriving Show
 
 -- | Represents a parameter which can be an identifier or an integer
@@ -50,8 +47,6 @@ data Expr = IntConst Integer
           | Add Expr Expr
           | Sub Expr Expr
           | If Condition Expr Expr
-          | Then Expr
-          | Else Expr
           | Call String [Param]
           deriving Show
 
@@ -65,32 +60,34 @@ data Comparator = Eq | Lt | Gt deriving Show
 
 
 -- TO CHECK, ONE IMPLEMENTATION OF FIBONACCI GIVES F(0) = 1 AND THE OTHER F(0) = 0 
-fibonacci = Program [Procedure (Var "fibonacci") [IntParam (Var "n")] (If (Cond Eq (Var "n") (IntConst 0)) (Then (IntConst 0))
- (Else (If (Cond Eq (Var "n") (IntConst 1)) (Then (IntConst 1)) (Else ( Add 
+fibonacci = Program [Procedure "fibonacci" [IntParam (Var "n")] (If (Cond Eq (Var "n") (IntConst 0)) (IntConst 0)
+ (If (Cond Eq (Var "n") (IntConst 1)) (IntConst 1) ( Add 
     (Call "fibonacci" [IntParam (Sub (Var "n") (IntConst 1))])
     (Call "fibonacci" [IntParam (Sub (Var "n") (IntConst 2))] )
-    
-    )        
-    ) ) ) )]
+    )
+
+  ) 
+  )]
 
 
-fib = Program [Procedure (Var "fibonacci") [IntParam (Var "n")] (If (Cond Eq (Var "n") (IntConst 0)) (Then (IntConst 0))
- (Else (If (Cond Eq (Var "n") (IntConst 1)) (Then (IntConst 1)) (Else ( Add 
-    (Call "fibonacci" [IntParam (Sub (Var "n") (IntConst 1))])
-    (Call "fibonacci" [IntParam (Sub (Var "n") (IntConst 2))] )
-    
-    )        
-    ) ) ) )]
+fib = Program [Procedure "fib" [IntParam (Var "n")] (If (Cond Eq (Var "n") (IntConst 0)) (IntConst 0)
+ (If (Cond Eq (Var "n") (IntConst 1)) (IntConst 1) ( Add 
+    (Call "fib" [IntParam (Sub (Var "n") (IntConst 1))])
+    (Call "fib" [IntParam (Sub (Var "n") (IntConst 2))] )
+    )
 
-sumProg = Program [Procedure (Var "sum") [IntParam (Var "a")] (If (Cond Eq (Var "a") (IntConst 0)) (Then (IntConst 0)) (Else (Add (Var "a") (Call "sum" [IntParam (Sub (Var "a") (IntConst 1))] ))))]
+  ) 
+  )]
 
-divProg = Program [Procedure (Var "div") [IntParam (Var "x"), IntParam (Var "y")] (
+sumProg = Program [Procedure "sum" [IntParam (Var "a")] (If (Cond Eq (Var "a") (IntConst 0)) (IntConst 0) (Add (Var "a") (Call "sum" [IntParam (Sub (Var "a") (IntConst 1))] )))]
+
+divProg = Program [Procedure "div" [IntParam (Var "x"), IntParam (Var "y")] (
     If (Cond Lt (Var "x") (Var "y"))
        (IntConst 0)
        (Add (IntConst 1) (Call "div" [IntParam (Sub (Var "x") (Var "y")), IntParam (Var "y")]))
   )]
 
-twice =   Program [Procedure (Var "twice") [IdParam (Var "f"), IntParam (Var "x")] (
+twice =   Program [Procedure "twice" [IdParam (Var "f"), IntParam (Var "x")] (
     Call "f" [IntParam (Call "f" [IntParam (Var "x")])]
   )
   ]
@@ -98,9 +95,9 @@ twice =   Program [Procedure (Var "twice") [IdParam (Var "f"), IntParam (Var "x"
 
 
 struct = Program [
-  Procedure (Var "add") [IntParam (Var "x"), IntParam (Var "y")] (Add (Var "x") (Var "y")),
-  Procedure (Var "inc") [IntParam (Var "x")] (Call "add" [IntParam (IntConst 1)]),
-  Procedure (Var "eleven") [] (Call "inc" [IntParam (IntConst 10)])
+  Procedure "add" [IntParam (Var "x"), IntParam (Var "y")] (Add (Var "x") (Var "y")),
+  Procedure "inc" [IntParam (Var "x")] (Call "add" [IntParam (IntConst 1)]),
+  Procedure "eleven" [] (Call "inc" [IntParam (IntConst 10)])
   ]
 
 -- UTILISATION EXAMPLE ???
@@ -127,7 +124,7 @@ pretty (Program procedures) = foldr (\x s-> x ++ "\n"++ s) "" $ map prettyProced
 -- build string representing a procedure data type
 prettyProcedure :: Procedure -> String
 prettyProcedure (Procedure name params expr) =
-  prettyExpr name ++ " " ++ foldr (\x s-> x ++ " "++ s) "" (map prettyParam params) ++ " := " ++ prettyExpr expr ++ ";"
+  name ++ " " ++ foldr (\x s-> x ++ " "++ s) "" (map prettyParam params) ++ " := " ++ prettyExpr expr ++ ";"
 -- the foldr is to build a global string with all parameters separated by spaces
 
 
@@ -144,13 +141,11 @@ prettyExpr (Mult e1 e2) = "(" ++ prettyExpr e1 ++ " * " ++ prettyExpr e2 ++ ")"
 prettyExpr (Add e1 e2) = "(" ++ prettyExpr e1 ++ " + " ++ prettyExpr e2 ++ ")"
 prettyExpr (Sub e1 e2) = "(" ++ prettyExpr e1 ++ " - " ++ prettyExpr e2 ++ ")"
 prettyExpr (If cond e1 e2) = "if (" ++ prettyCondition cond ++ ")"
-    ++ prettyExpr e1 -- then
-    ++ prettyExpr e2 -- else
+    ++ " then {\n\t" ++ prettyExpr e1 ++ "\n}" -- then
+    ++ " else {\n\t" ++ prettyExpr e2 ++ "\n}\n" -- else
 
 -- there, we need to fold as we might have multiple parameters
 prettyExpr (Call func params) = func ++ "(" ++ foldr (\x s -> prettyParam x ++ s) "" params ++ ")"
-prettyExpr (Then e) = " then {\n\t" ++ prettyExpr e ++ "\n}"
-prettyExpr (Else e) = " else {\n\t" ++ prettyExpr e ++ "\n}\n"
 
 -- build string representing a Condition data type
 prettyCondition :: Condition -> String
@@ -180,7 +175,7 @@ testPrettyFibonacci = pretty fibonacci == expected
 
 -- MAIN FUNCTION
 eval :: Prog->String->[Integer]->Integer
-eval p@(Program ((Procedure (Var fname) params fbody):fs)) function_to_call args
+eval p@(Program ((Procedure fname params fbody):fs)) function_to_call args
     | fname == function_to_call = evalExpr fbody associated_args p
     | otherwise = eval (Program fs) function_to_call args
     -- associate every parameter's value with its identifier String
@@ -210,8 +205,6 @@ evalExpr (Sub e1 e2) args p = evalExpr e1 args p - evalExpr e2 args p
 evalExpr (If cond e1 e2) args p
   | evalCond cond args p = evalExpr e1 args p
   | otherwise = evalExpr e2 args p
-evalExpr (Then e) args p = evalExpr e args p
-evalExpr (Else e) args p = evalExpr e args p
 
 -- function call
 evalExpr (Call fname params) args p = eval p fname $ evalParams params args p
@@ -244,6 +237,71 @@ testEvalSum = eval sumProg "sum" [5] == 15
 
 testEvalFibonacci :: Bool
 testEvalFibonacci = eval fibonacci "fibonacci" [5] == 5
+
+
+-- factor :: Parser Expr
+-- factor =
+--       whitespace intConst
+--   <|> whitespace ifExpr
+--   <|> whitespace functionCall
+--   <|> whitespace <*> parens expr
+--   <|> whitespace variable
+
+-- intConst :: Parser Expr
+-- intConst = IntConst <$> integer
+
+-- variable :: Parser Expr
+-- variable = Var <$> many letter
+
+
+-- expr :: Parser Expr
+-- expr = 
+
+-- -- term :: Parser Expr
+-- -- term = factor <|> factor <* char '*' *> term
+
+-- ifExpr :: Parser Expr
+-- ifExpr =
+--   string "if" *>
+--   ( If <$> parens condition <*
+  
+--   string "then" *>
+  
+--   (Then <$> braces expr) <*
+  
+--   string "else" *>
+  
+--   (Else <$> braces expr ) 
+  
+--   )
+
+-- functionCall :: Parser Expr
+-- functionCall =
+--   many letter >>= \name ->
+--   option [] (parens (sep param (char ','))) >>= \args ->
+--   pure (Call name args)
+
+
+
+
+
+
+-- condition :: Parser Condition
+-- condition =
+--   Cond <$> 
+--   expr <*> 
+--   comparator <*>
+--   expr
+
+--   -- pure (Cond cmp e1 e2)
+
+-- comparator :: Parser Comparator
+-- comparator =
+--       pure Eq <$ string "=="
+--   <|> pure Lt <$ char '<'
+--   <|> pure Gt <$ char '>'
+
+
 
 
 -- QuickCheck: all prop_* tests
