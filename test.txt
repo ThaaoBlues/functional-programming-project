@@ -1,0 +1,7 @@
+div x y := 1 + div ((x-y), y)
+-- runParser functionCall (Stream "div ((x-y), y)") ERREUR ICI
+-- MORE PRECISE 
+
+runParser (parens (sep param (whitespace (char ',')))) (Stream "(x-y), y)")
+
+[([Param (Sub (Var "x") (Var "y"))],Stream ", y)")]

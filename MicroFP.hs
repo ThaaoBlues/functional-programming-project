@@ -179,12 +179,22 @@ testPrettyFibonacci = pretty fib == expected
 -- MAIN FUNCTION
 eval :: Prog->String->[Integer]->Integer
 eval p@(Program ((Procedure fname params fbody):fs)) function_to_call args
-    | fname == function_to_call = evalExpr fbody associated_args p
+    -- matchArgs will be used to differenciate the same procedure definition
+    -- but with different pattern matching
+    -- allowing us to select the one matching the given parameters
+    | fname == function_to_call && matchArgs args params = evalExpr fbody associated_args p
     | otherwise = eval (Program fs) function_to_call args
     -- associate every parameter's value with its identifier String
     where associated_args = zip params args 
 
 -- HELPER FUNCTIONS
+
+-- return true if we can match all parameters to the pattern of a procedure definiton
+matchArgs ::[Integer]->[Param]->Bool
+matchArgs [] [] = True
+matchArgs (i:is) ((Param (IntConst p )):ps) = p == i && matchArgs is ps
+matchArgs (i:is) ((Param (Var _ )):ps) = matchArgs is ps
+
 
 
 -- find an argument value from its variable identifier
@@ -246,7 +256,7 @@ testEvalFib = eval fib "fib" [5] == 5
 
 
 factor :: Parser Expr
-factor =
+factor = 
       intConst
   <|> ifExpr
   <|> functionCall
@@ -271,16 +281,16 @@ term = Mult <$> factor <*> (whitespace (char '*') *> term) <|> factor
 
 ifExpr :: Parser Expr
 ifExpr =
-  string "if" *>
+  whitespace (string "if") *>
   ( If <$> whitespace (parens condition) <*>
   
-  (string "then" *>
+  (whitespace (string "then") *>
   
-  whitespace (braces expr) )<*> -- Then
+  whitespace (braces (whitespace expr) ) )<*> -- Then
   
-  (string "else" *>
+  (whitespace (string "else") *>
   
-  whitespace (braces expr) ) -- Else
+  whitespace (braces (whitespace expr)) ) -- Else
   
   )
 
@@ -289,16 +299,16 @@ param :: Parser Param
 param = Param <$> expr
 
 functionParser :: Parser Procedure 
-functionParser = Procedure <$> 
+functionParser = whitespace(Procedure <$>
   identifier <*> 
   sep param (char ' ') <*>
   (whitespace (string ":=") *> 
-  expr) <*
-  char ';'
+  whitespace expr) <*
+  char ';')
 
 functionCall :: Parser Expr
-functionCall =
-  Call <$> identifier <*> parens (sep param (char ','))
+functionCall = whitespace(
+  Call <$> identifier <*> parens (sep1 param (char ',')))
 
 
 condition :: Parser Condition

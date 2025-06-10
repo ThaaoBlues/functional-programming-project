@@ -73,7 +73,7 @@ test6 = null $ runParser dig (Stream "b1a")
 
 --parses one or more occurrences of p, separated by s
 sep1 :: Parser a -> Parser b -> Parser [a]
-sep1 p s = (:) <$> p <*> many ( s *> p)
+sep1 p s = (:) <$> p <*> many (s *> p)
 
 -- The parser sep p s works as sep1 p s, but parses zero or more occurrences of p.
 sep :: Parser a -> Parser b -> Parser [a]
@@ -120,7 +120,7 @@ string = foldr (\ x -> (<*>) ((:) <$> char x)) (pure [])
 
 -- parses an identifier surrounded by whites-pace
 identifier :: Parser String
-identifier = whitespace (many (letter <|> dig))
+identifier = whitespace (some (letter <|> dig))
 
 -- parses an integer surrounded by whitespace.
 integer :: Parser Integer
