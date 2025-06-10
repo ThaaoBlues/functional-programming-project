@@ -57,14 +57,21 @@ data Comparator = Eq | Lt | Gt deriving (Show, Eq)
 
 
 -- TO CHECK, ONE IMPLEMENTATION OF FIBONACCI GIVES F(0) = 1 AND THE OTHER F(0) = 0 
-fibonacci = Program [Procedure "fibonacci" [Param (Var "n")] (If (Cond Eq (Var "n") (IntConst 0)) (IntConst 0)
- (If (Cond Eq (Var "n") (IntConst 1)) (IntConst 1) ( Add 
-    (Call "fibonacci" [Param (Sub (Var "n") (IntConst 1))])
-    (Call "fibonacci" [Param (Sub (Var "n") (IntConst 2))] )
+fibonacci = Program [
+  (Procedure "fibonacci" [Param (IntConst 0)] (IntConst 0)),
+  (Procedure "fibonacci" [Param (IntConst 1)] (IntConst 1)),
+  (Procedure "fibonacci" [Param (Var "n")]    
+    (Add (Call "fibonacci" [Param (Sub (Var "n") (IntConst 1))])
+    (Call "fibonacci" [Param (Sub (Var "n") (IntConst 2))])
+    
     )
+    
+  )
 
-  ) 
-  )]
+
+
+    
+  ]
 
 
 fib = Program [Procedure "fib" [Param (Var "n")] (If (Cond Eq (Var "n") (IntConst 0)) (IntConst 0)
@@ -155,12 +162,12 @@ prettyComparator Lt = "<"
 prettyComparator Gt = ">"
 
 -- UTILISATION EXAMPLE
-printFibo = putStrLn $ pretty fibonacci
+printFibo = putStrLn $ pretty fib
 
 -- TESTS
 testPrettyFibonacci :: Bool
-testPrettyFibonacci = pretty fibonacci == expected
-  where expected = "fibonacci n := if (n == 0) then {\n\t0\n} else {\n\tif (n == 1) then {\n\t1\n} else {\n\t(fibonacci((n - 1)) + fibonacci((n - 2)))\n}\n}"
+testPrettyFibonacci = pretty fib == expected
+  where expected = "fib n := if (n == 0) then {\n\t0\n} else {\n\tif (n == 1) then {\n\t1\n} else {\n\t(fib((n - 1)) + fib((n - 2)))\n}\n}"
 
 
 
@@ -224,15 +231,15 @@ evalCond (Cond Gt e1 e2) args p = evalExpr e1 args p > evalExpr e2 args p
 
 
 -- UTILISATION EXAMPLE
-fibofive = eval fibonacci "fibonacci" [5]
+fibofive = eval fib "fib" [5]
 
 
 -- TESTS
 testEvalSum :: Bool
 testEvalSum = eval sumProg "sum" [5] == 15
 
-testEvalFibonacci :: Bool
-testEvalFibonacci = eval fibonacci "fibonacci" [5] == 5
+testEvalFib :: Bool
+testEvalFib = eval fib "fib" [5] == 5
 
 
 -- FP4.1
