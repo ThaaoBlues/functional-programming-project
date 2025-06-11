@@ -1,7 +1,8 @@
-div x y := 1 + div ((x-y), y)
--- runParser functionCall (Stream "div ((x-y), y)") ERREUR ICI
--- MORE PRECISE 
-
-runParser (parens (sep param (whitespace (char ',')))) (Stream "(x-y), y)")
-
-[([Param (Sub (Var "x") (Var "y"))],Stream ", y)")]
+add x y := x + y;
+div x y :=
+   if (x < y) then
+     {
+       0
+     } else {
+       1 + div ((x-y), y)
+     };

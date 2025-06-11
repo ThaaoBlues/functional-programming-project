@@ -308,7 +308,7 @@ functionParser = whitespace(Procedure <$>
 
 functionCall :: Parser Expr
 functionCall = whitespace(
-  Call <$> identifier <*> parens (sep1 param (char ',')))
+  Call <$> identifier <*> parens (sep1 param (whitespace(char ','))))
 
 
 condition :: Parser Condition
