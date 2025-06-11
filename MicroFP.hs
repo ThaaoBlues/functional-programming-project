@@ -162,7 +162,7 @@ prettyComparator Lt = "<"
 prettyComparator Gt = ">"
 
 -- UTILISATION EXAMPLE
-printFibo = putStrLn $ pretty fib
+printFib = putStrLn $ pretty fib
 
 -- TESTS
 testPrettyFibonacci :: Bool
@@ -172,28 +172,40 @@ testPrettyFibonacci = pretty fib == expected
 
 
 
--- FP 3.4 
+-- FP 3.4
+-- FP 5.2
 -- by Théo Mougnibas
 
 
 -- MAIN FUNCTION
 eval :: Prog->String->[Integer]->Integer
-eval p@(Program ((Procedure fname params fbody):fs)) function_to_call args
-    -- matchArgs will be used to differenciate the same procedure definition
-    -- but with different pattern matching
-    -- allowing us to select the one matching the given parameters
-    | fname == function_to_call && matchArgs args params = evalExpr fbody associated_args p
-    | otherwise = eval (Program fs) function_to_call args
+eval (Program []) _ _ = error "Procedure not found or arguments didn't match"
+eval p@(Program f_list) function_to_call args
+
     -- associate every parameter's value with its identifier String
-    where associated_args = zip params args 
+    | null matching_candidates = error "No procedure to pattern match the arguments or procedure not found by name."
+    | otherwise = 
+        -- get first candidate procedure by pattern matching
+        let (Procedure fname params fbody)= head matching_candidates
+        -- associate procedure parameters to actual values
+        in let associated_arguments = zip params args
+        -- evaluate procedure body
+        in evalExpr fbody associated_arguments p
+    where 
+        matching_candidates = filter 
+          (\(Procedure fname params fbody) -> fname == function_to_call && matchArgs args params) 
+          f_list
+
 
 -- HELPER FUNCTIONS
 
 -- return true if we can match all parameters to the pattern of a procedure definiton
-matchArgs ::[Integer]->[Param]->Bool
+matchArgs :: [Integer] -> [Param] -> Bool
 matchArgs [] [] = True
-matchArgs (i:is) ((Param (IntConst p )):ps) = p == i && matchArgs is ps
-matchArgs (i:is) ((Param (Var _ )):ps) = matchArgs is ps
+matchArgs (i:is) (Param (IntConst p) : ps) = i == p && matchArgs is ps
+matchArgs (i:is) (Param (Var _) : ps)      = matchArgs is ps
+matchArgs _ _ = False  -- fallback: mismatched lengths or unknown pattern
+
 
 
 
@@ -241,7 +253,7 @@ evalCond (Cond Gt e1 e2) args p = evalExpr e1 args p > evalExpr e2 args p
 
 
 -- UTILISATION EXAMPLE
-fibofive = eval fib "fib" [5]
+fibfive = eval fib "fib" [5]
 
 
 -- TESTS
@@ -251,6 +263,7 @@ testEvalSum = eval sumProg "sum" [5] == 15
 testEvalFib :: Bool
 testEvalFib = eval fib "fib" [5] == 5
 
+testFibonacciPatternMatching = eval fibonacci "fibonacci" [5] == 5
 
 -- FP4.1
 
@@ -294,7 +307,7 @@ mulOp :: Parser (Expr -> Expr -> Expr)
 mulOp = whitespace (char '*') *> pure Mult
 
 
-
+-- OLD VERSION, recursive
 -- expr' :: Parser Expr
 -- expr' =  
 --        Add <$> term <*> (whitespace (char '+') *> expr) <|>
