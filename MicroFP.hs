@@ -442,4 +442,8 @@ compile s = fst. head $ runParser program (Stream s)
 
 testcompile = compile "fib n := if (n < 3) then {1} else {fib (n-1) + fib (n-2)};"
 
-
+runFile :: FilePath -> [Integer] -> IO Integer
+runFile file xs = eval <$> p <*> (f <$> p) <*> pure xs
+  where p = compile <$> readFile file
+        f (Program ps) = name (last ps)
+        name (Procedure n _ _) = n
