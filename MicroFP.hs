@@ -148,7 +148,7 @@ prettyExpr (If cond e1 e2) = "if (" ++ prettyCondition cond ++ ")"
     ++ " else {\n\t" ++ prettyExpr e2 ++ "\n}\n" -- else
 
 -- there, we need to fold as we might have multiple parameters
-prettyExpr (Call func params) = func ++ "(" ++ foldr (\x s -> prettyParam x ++ s) "" params ++ ")"
+prettyExpr (Call func (p1:ps)) = func ++ "(" ++ foldr (\x s -> s++"," ++prettyParam x ) (prettyParam p1) ps ++ ")"
 
 -- build string representing a Condition data type
 prettyCondition :: Condition -> String
@@ -254,14 +254,66 @@ testEvalFib = eval fib "fib" [5] == 5
 
 -- FP4.1
 
+-- takes an initial value and a list of functions,
+-- and applies them from left to right to the accumulated result
+-- used for left-associative application of operators
+fold :: a -> [a -> a] -> a
+fold = foldl (\x f -> f x)
+
+-- parses one or more occurrences of 'p' separated by operator 'op'
+-- left-associative
+chainl1 :: Parser a -> Parser (a -> a -> a) -> Parser a
+chainl1 p op = parse
+  where
+    -- parses a single value with parser p
+    -- then parses z/more of operator followed by another value
+    -- and folds them left-associatively.
+    parse = fold <$> p <*> many rest
+
+    -- parses an operator and a value, then returns a function
+    -- that takes the current accumulated value 
+    -- and applies the operator to it and the new value.
+    -- ( operators are Add, Sub or Mul)
+    rest = (\f y -> \x -> f x y) <$> op <*> p
+
+-- use left associative chain to avoid recursion
+-- recursion was extremely slow
+expr :: Parser Expr
+expr = term `chainl1` addOp
+
+term :: Parser Expr
+term = factor `chainl1` mulOp
+
+-- parses left side of Add/sub operations
+addOp :: Parser (Expr -> Expr -> Expr)
+addOp =  (whitespace (char '+') *> pure Add)
+     <|> (whitespace (char '-') *> pure Sub)
+
+-- parses left side of Mult operations
+mulOp :: Parser (Expr -> Expr -> Expr)
+mulOp = whitespace (char '*') *> pure Mult
+
+
+
+-- expr' :: Parser Expr
+-- expr' =  
+--        Add <$> term <*> (whitespace (char '+') *> expr) <|>
+--        Sub <$> term <*> (whitespace (char '-') *> expr) <|>
+--        term
+
+-- term' :: Parser Expr
+-- term' = Mult <$> factor <*> (whitespace (char '*') *> term) <|> factor
+
 
 factor :: Parser Expr
 factor = 
-      intConst
+  intConst
+  <|> parens expr
   <|> ifExpr
   <|> functionCall
-  <|> variable
-  <|> parens expr
+  <|> variable -- don't move variable from here as it could eat identifier of function calls
+
+
 
 intConst :: Parser Expr
 intConst = IntConst <$> integer
@@ -270,14 +322,7 @@ variable :: Parser Expr
 variable = Var <$> some (letter <|> dig)
 
 
-expr :: Parser Expr
-expr =  
-       Add <$> term <*> (whitespace (char '+') *> expr) <|>
-       Sub <$> term <*> (whitespace (char '-') *> expr) <|>
-       term
 
-term :: Parser Expr
-term = Mult <$> factor <*> (whitespace (char '*') *> term) <|> factor
 
 ifExpr :: Parser Expr
 ifExpr =
@@ -331,12 +376,14 @@ program = Program <$> whitespace (some functionParser)
 
 check :: (Eq a, Show a) => String -> a -> a -> IO ()
 check label expected actual =
-  if expected == actual
-    then putStrLn $ "[PASS] " ++ label
-    else do
-      putStrLn $ "[FAIL] " ++ label
-      putStrLn $ "  Expected: " ++ show expected
-      putStrLn $ "  Actual:   " ++ show actual
+  putStrLn (
+    if expected == actual
+      then "[PASS] " ++ label
+      else "[FAIL] " ++ label 
+      ++ "\n  Expected: " ++ show expected 
+      ++ "\n  Actual:   " ++ show actual
+  )
+
 
 
 testIntConst = runParser intConst (Stream "42")
