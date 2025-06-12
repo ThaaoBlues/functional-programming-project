@@ -47,7 +47,7 @@ newtype Prog = Program [Procedure]
 data Procedure = Procedure String [Param] Expr
             deriving (Show, Eq)
 
--- | Represents a parameter which can be an identifier or an integer
+-- EDSL
 data Param = Param Expr
   deriving (Show, Eq)
 
