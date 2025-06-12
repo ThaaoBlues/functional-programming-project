@@ -1,0 +1,11 @@
+sum 0 := 0;
+sum a := sum (a-1) + a;
+
+twice f x := f (f (x));
+double a := a*2; 
+
+add x y := x + y;
+inc := add (1);
+eleven := inc (10);
+
+fourty := twice (double, 10);
