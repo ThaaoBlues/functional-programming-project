@@ -10,7 +10,19 @@ module MicroFP where
 import Control.Applicative
 import PComb
 import BasicParsers
-import Data.Traversable (for)
+
+
+
+check :: (Eq a, Show a) => String -> a -> a -> IO ()
+check label expected actual =
+  putStrLn (
+    if expected == actual
+      then "[PASS] " ++ label
+      else "[FAIL] " ++ label 
+      ++ "\n  Expected: " ++ show expected 
+      ++ "\n  Actual:   " ++ show actual
+  )
+
 
 
 -- FP3.1 
@@ -166,9 +178,7 @@ prettyComparator Gt = ">"
 printFib = putStrLn $ pretty fib
 
 -- TESTS
-testPrettyFibonacci :: Bool
-testPrettyFibonacci = pretty fib == expected
-  where expected = "fib n := if (n == 0) then {\n\t0\n} else {\n\tif (n == 1) then {\n\t1\n} else {\n\t(fib((n - 1)) + fib((n - 2)))\n}\n}"
+testPrettyFibonacci = check "pretty fib" (pretty fib) "fib n := if (n == 0) then {\n\t0\n} else {\n\tif (n == 1) then {\n\t1\n} else {\n\t(fib((n - 1)) + fib((n - 2)))\n}\n}"
 
 
 
@@ -258,14 +268,11 @@ fibfive = eval fib "fib" [5]
 
 
 -- TESTS
-testEvalSum :: Bool
-testEvalSum = eval sumProg "sum" [5] == 15
+testEvalSum = check "sum" (show (eval sumProg "sum" [5]) ) "15"
 
-testEvalFib :: Bool
-testEvalFib = eval fib "fib" [5] == 5
+testEvalFib = check "fib" (show (eval fib "fib" [5])) "5"
 
-testEvalFibonacci :: Bool
-testEvalFibonacci = eval fibonacci "fibonacci" [5] == 5
+testEvalFibonacci = check "fibonacci" (show (eval fibonacci "fibonacci" [5])) "5"
 
 
 -- FP4.1
@@ -365,7 +372,7 @@ functionParser = Procedure <$>
 -- parses a function call and its parameters
 functionCall :: Parser Expr
 functionCall = whitespace(
-  Call <$> identifier <*> parens (sep1 param (symbol ",")))
+  Call <$> identifier <*> parens (sep1 callParam (symbol ",")))
 
 
 -- parses the condition of an if statement
@@ -387,17 +394,6 @@ program = Program <$> whitespace (some functionParser)
 
 
 -- FP4.1 parser tests
-
-check :: (Eq a, Show a) => String -> a -> a -> IO ()
-check label expected actual =
-  putStrLn (
-    if expected == actual
-      then "[PASS] " ++ label
-      else "[FAIL] " ++ label 
-      ++ "\n  Expected: " ++ show expected 
-      ++ "\n  Actual:   " ++ show actual
-  )
-
 
 
 testIntConst = runParser intConst (Stream "42")
@@ -447,6 +443,37 @@ testProgramParser =
       names = map (\(Procedure name _ _) -> name) fs
   in check "programParser (function names)" ["f", "g"] names
 
+
+-- FP5.3
+
+-- rewrites function definitions with pattern
+-- matching to a single definition with if-expressions.
+patmatch :: Prog->Prog
+patmatch (Program p@((Procedure fname params fbody):ps)) = Program [(Procedure fname new_params new_body)]
+  where new_params = Param (getVarOfFirstArgumentOfLastProcedure p) : tail params
+        new_body = patmatch' p
+
+
+patmatch' :: [Procedure] -> Expr
+patmatch' [(Procedure name params fbody)] = fbody
+patmatch' p@((Procedure name params fbody):ps) = If (Cond (Eq) (var) (const)) (fbody) (sbody)
+  where var = getVarOfFirstArgumentOfLastProcedure p
+        (Param const) = head params
+        sbody = patmatch' ps
+
+getVarOfFirstArgumentOfLastProcedure :: [Procedure]->Expr
+getVarOfFirstArgumentOfLastProcedure ps = var
+  where (Param var) = head params
+        (Procedure _ params _ ) = last ps
+
+-- USAGE EXAMPLE
+patmatchUsageExample :: String
+patmatchUsageExample = (pretty.patmatch) fibonacci
+
+
+-- TESTS
+patmatchTest1 = check "patmatch fibonacci" ((pretty.patmatch) fibonacci) "fibonacci n  := if (n == 0) then {\n\t0\n} else {\n\tif (n == 1) then {\n\t1\n} else {\n\t(fibonacci((n - 1)) + fibonacci((n - 2)))\n}\n\n}\n;\n"
+patmatchTest2 = check "patmatch sum" ((pretty.patmatch) sumProg) "sum a  := if (a == 0) then {\n\t0\n} else {\n\t(a + sum((a - 1)))\n}\n;\n"
 
 
 -- FP4.2
