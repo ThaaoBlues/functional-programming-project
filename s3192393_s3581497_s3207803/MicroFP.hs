@@ -47,7 +47,7 @@ newtype Prog = Program [Procedure]
 data Procedure = Procedure String [Param] Expr
             deriving (Show, Eq)
 
--- | Represents a parameter which can be an identifier or an integer
+-- EDSL
 data Param = Param Expr
   deriving (Show, Eq)
 
@@ -68,8 +68,6 @@ data Comparator = Eq | Lt | Gt deriving (Show, Eq)
 -- FP3.2
 -- by Théo Mougnibas
 
-
--- TO CHECK, ONE IMPLEMENTATION OF FIBONACCI GIVES F(0) = 1 AND THE OTHER F(0) = 0 
 fibonacci = Program [
   (Procedure "fibonacci" [Param (IntConst 0)] (IntConst 0)),
   (Procedure "fibonacci" [Param (IntConst 1)] (IntConst 1)),
@@ -117,9 +115,11 @@ struct = Program [
   Procedure "eleven" [] (Call "inc" [Param (IntConst 10)])
   ]
 
--- UTILISATION EXAMPLE ???
+-- UTILISATION EXAMPLE
 
--- TESTS ???
+-- tested and used by testing other features that actually do something
+
+-- TESTS 
 
 
 
