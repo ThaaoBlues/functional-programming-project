@@ -276,6 +276,8 @@ testEvalFibonacci = check "fibonacci" (show (eval fibonacci "fibonacci" [5])) "5
 
 
 -- FP4.1
+-- Théo Mougnibas
+
 
 -- takes an initial value and a list of functions,
 -- and applies them from left to right to the accumulated result
@@ -392,9 +394,10 @@ comparator =
 program :: Parser Prog
 program = Program <$> whitespace (some functionParser)
 
+-- USAGE EXAMPLES
+example3 = runParser program (Stream "f x := x;")
 
--- FP4.1 parser tests
-
+-- TESTS
 
 testIntConst = runParser intConst (Stream "42")
 
@@ -421,12 +424,10 @@ testIfExpr = check "ifExpr"
 testFunctionCall = check "functionCall"
   [(Call "f" [Param (Var "x")], Stream "")]
   (runParser functionCall (Stream "f (x)"))
-testComparator :: IO ()
 
-testComparator = do
-  check "comparator ==" Eq (fst . head $ runParser comparator (Stream "=="))
-  check "comparator <" Lt (fst . head $ runParser comparator (Stream "<"))
-  check "comparator >" Gt (fst . head $ runParser comparator (Stream ">"))
+testComparator1 = check "comparator ==" Eq (fst . head $ runParser comparator (Stream "=="))
+testComparator2 =  check "comparator <" Lt (fst . head $ runParser comparator (Stream "<"))
+testComparator3 =  check "comparator >" Gt (fst . head $ runParser comparator (Stream ">"))
 
 testCondition = check "condition"
   [(Cond Lt (Var "x") (IntConst 2), Stream "")]
@@ -445,6 +446,7 @@ testProgramParser =
 
 
 -- FP5.3
+-- Théo Mougnibas
 
 -- rewrites function definitions with pattern
 -- matching to a single definition with if-expressions.
@@ -477,7 +479,7 @@ patmatchTest2 = check "patmatch sum" ((pretty.patmatch) sumProg) "sum a  := if (
 
 
 -- FP4.2
-
+-- Iris Borgonjen
 compile :: String -> Prog
 compile s = case runParser program (Stream s) of
     [] -> error "Impossible to parse program. (Missing semicolon ?)"

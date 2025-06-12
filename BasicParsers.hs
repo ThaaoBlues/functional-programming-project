@@ -98,10 +98,10 @@ exampleOption = runParser (option 'x' (char 'c')) (Stream "test")
 -- TESTS
 
 test7 :: Bool
-test7 = runParser (sep1 letter (char ',')) (Stream "a,b,c") == [("a,b,c",Stream [])]
+test7 = runParser (sep1 letter (char ',')) (Stream "a,b,c") == [("abc",Stream [])]
 
 test8 :: Bool
-test8 = null $ runParser (sep letter (char ',')) (Stream "")
+test8 = runParser (sep letter (char ',')) (Stream "") == [("", Stream "")]
 
 test9 :: Bool
 test9 = runParser (option 'x' (char 'c')) (Stream "test") == [('x',Stream "test")]
@@ -158,7 +158,7 @@ test11 = runParser (string "ceci est") (Stream "ceci est un exemple") == [("ceci
 
 test12 = runParser identifier (Stream " function := x==1") == [("function",Stream ":= x==1")]
 
-test13 = runParser integer (Stream "123456 aha") == [(123456,Stream " aha")]
+test13 = runParser integer (Stream "123456 aha") == [(123456,Stream "aha")]
 
 test14 = runParser (symbol "ceci") (Stream " ceci est un exemple") == [("ceci",Stream "est un exemple")]
 
