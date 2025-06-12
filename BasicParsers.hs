@@ -9,7 +9,6 @@ import Control.Applicative
 import Data.Char
 import Test.QuickCheck
 import PComb
-import Data.Type.Coercion (sym)
 
 
 -- FP2.2

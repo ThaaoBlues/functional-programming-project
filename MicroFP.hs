@@ -481,34 +481,60 @@ patmatchTest2 = check "patmatch sum" ((pretty.patmatch) sumProg) "sum a  := if (
 
 -- FP4.2
 -- Iris Borgonjen
+-- Parses a given string according to the MicroFP grammar
 compile :: String -> Prog
 compile s = case runParser program (Stream s) of
     [] -> error "Impossible to parse program. (Missing semicolon ?)"
     result -> fst. head $ result
 testcompile = compile "fib n := if (n < 3) then {1} else {fib (n-1) + fib (n-2)};"
 
+-- FP 4.3
+-- Iris Borgonjen
+-- Reads, compiles and evaluates a given file with given parameters
+-- Uses the last function in case the file contains multiple
 runFile :: FilePath -> [Integer] -> IO Integer
 runFile file xs = eval <$> p <*> (f <$> p) <*> pure xs
   where p = compile <$> readFile file
         f (Program ps) = name (last ps)
         name (Procedure n _ _) = n
 
+-- FP5.6
+-- Iris Borgonjen
+-- QuickCheck instances for the parser
 
+-- Generates function names
 genFunc :: Gen String
 genFunc = vectorOf 3 (elements "fghk")
 
+-- Test
+genFuncTest = generate genFunc
+
+-- Generates identifier names
 genId :: Gen String
 genId = vectorOf 3 (elements "abcde")
+
+-- Test
+genIdTest = generate genId
 
 instance Arbitrary Comparator where
   arbitrary = oneof [pure Eq, pure Lt, pure Gt]
 
+-- Test
+genCompTest = generate (arbitrary :: Gen Comparator)
+
 instance Arbitrary Condition where
   arbitrary = Cond <$> (arbitrary :: Gen Comparator) <*> (arbitrary :: Gen Expr) <*> (arbitrary :: Gen Expr)
+
+-- Test
+genCondTest = generate (arbitrary :: Gen Condition)
 
 instance Arbitrary Param where
   arbitrary = Param <$> (arbitrary :: Gen Expr)
 
+-- Test
+genParamTest = generate (arbitrary :: Gen Param)
+
+-- Size limited, to prevent test cases that are too long
 instance Arbitrary Expr where
   arbitrary = resize 2 $ sized arbexpr
     where
@@ -524,20 +550,36 @@ instance Arbitrary Expr where
           Call <$> genFunc <*> resize 2 (listOf1 (arbitrary :: Gen Param))
         ]
 
+-- Test
+genExprTest = generate (arbitrary :: Gen Expr)
+
 instance Arbitrary Procedure where
   arbitrary = Procedure <$> 
               genFunc <*> 
               resize 2 (listOf (Param <$> oneof [IntConst <$> (arbitrary :: Gen Integer), Var <$> genId])) <*> 
               (arbitrary :: Gen Expr)
 
+-- Test
+genProcTest = generate (arbitrary :: Gen Procedure)
+
 instance Arbitrary Prog where
   arbitrary = Program <$> resize 2 (listOf (arbitrary :: Gen Procedure))
 
+-- Test
+genProgTest = generate (arbitrary :: Gen Prog)
+
+-- Helper function to be able to compile a single expression
 compileExpr :: String -> Expr
 compileExpr s = fst . head $ runParser expr (Stream s)
 
+-- Property that checks whether a pretty printed and compiled expression stayed the same
 prop_expr :: Expr -> Bool
 prop_expr e = compileExpr (prettyExpr e) == e
 
+-- Property that checks whether a pretty printed and compiled program stayed the same
 prop_prog :: Prog -> Bool
 prop_prog p = compile (pretty p) == p
+
+-- Test
+exprtest = quickCheck prop_expr
+progtest = quickCheck prop_prog
