@@ -9,6 +9,7 @@ import Control.Applicative
 import Data.Char
 import Test.QuickCheck
 import PComb
+import Data.Type.Coercion (sym)
 
 
 -- FP2.2
@@ -124,7 +125,7 @@ identifier = whitespace (some (letter <|> dig))
 
 -- parses an integer surrounded by whitespace.
 integer :: Parser Integer
-integer = read <$> some dig
+integer = read <$> whitespace (some dig)
 
 -- parses a given string surrounded by white-space
 symbol :: String->Parser String
@@ -132,11 +133,11 @@ symbol s =whitespace (string s)
 
 -- parses something using the provided parser between parentheses
 parens :: Parser a -> Parser a
-parens p = char '(' *> (p <* char ')')
+parens p = symbol "(" *> (p <* symbol ")")
 
 -- parses something using the provided parser between braces.
 braces :: Parser a -> Parser a
-braces p = char '{' *> (p <* char '}')
+braces p = symbol "{" *> (p <* symbol "}")
 
 
 -- UTILISATION EXAMPLE

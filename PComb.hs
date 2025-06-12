@@ -32,12 +32,21 @@ failure = P (\_ -> [])
 
 instance Applicative Parser where
     pure x = P (\inStream -> [(x, inStream)])
-    (P pf) <*> (P px) = P (\inStream -> [(f a, restx) | (f, restf) <- pf inStream, (a, restx) <- px restf])
-
+    pf <*> px = P --(\inStream -> [(f a, restx) | (f, restf) <- runParser pf inStream, (a, restx) <- runParser px restf])
+        (\inStream -> case runParser pf inStream of
+            [] -> []
+            [(f,restf)] -> case runParser px restf of
+                        [] -> []
+                        [(x,restx)] -> [(f x,restx)]
+                 )
 instance Alternative Parser where
     empty = failure
-    p1 <|> p2 = P p
-        where  p inStream | null $ runParser p1 inStream = runParser p2 inStream
-                          | otherwise = runParser p1 inStream
+    -- A TA advised us to not use list comprehension 
+    -- as it would not be using lazy evaluation properly
+    -- and he was right, our first implementation took 162 seconds to compile at BEST
+    p1 <|> p2 = P 
+        (\inStream -> case runParser p1 inStream of
+            [] -> runParser p2 inStream
+            result -> result)
 
 
