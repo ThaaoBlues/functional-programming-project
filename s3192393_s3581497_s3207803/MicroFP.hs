@@ -197,7 +197,7 @@ eval p@(Program f_list) function_to_call args
     | null matching_candidates = error "No procedure to pattern match the arguments or procedure not found by name."
     | otherwise = 
         -- get first candidate procedure by pattern matching
-        let (Procedure fname params fbody)= head matching_candidates
+        let (Procedure fname params fbody) = head matching_candidates
         -- associate procedure parameters to actual values
         in let associated_arguments = zip params args
         -- evaluate procedure body
@@ -324,8 +324,8 @@ factor =
   functionCall
   <|> ifExpr
   <|> parens expr
-  <|> variable -- don't move variable from here as it could eat identifier of function calls
   <|> intConst
+  <|> variable -- don't move variable from here as it could eat identifier of function calls
 
 -- parses an integer and put it as an expression
 intConst :: Parser Expr
