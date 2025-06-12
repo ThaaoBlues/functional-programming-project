@@ -297,8 +297,8 @@ chainl1 p op = parse
 
     -- parses an operator and a value, then returns a function
     -- that takes the current accumulated value 
-    -- and applies the operator to it and the new value.
-    -- ( operators are Add, Sub or Mul)
+    -- and applies the operator to it and the incoming value
+    -- ( built objects would be Add, Sub or Mul, f in the lambda function )
     rest = (\f y -> \x -> f x y) <$> op <*> p
 
 -- use left associative chain to avoid recursion
