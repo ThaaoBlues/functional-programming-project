@@ -11,6 +11,7 @@ import Control.Applicative
 import PComb
 import BasicParsers
 import Data.Traversable (for)
+import Test.QuickCheck
 
 
 -- FP3.1 
@@ -149,6 +150,7 @@ prettyExpr (If cond e1 e2) = "if (" ++ prettyCondition cond ++ ")"
     ++ " else {\n\t" ++ prettyExpr e2 ++ "\n}\n" -- else
 
 -- there, we need to fold as we might have multiple parameters
+prettyExpr (Call func []) = func
 prettyExpr (Call func (p1:ps)) = func ++ "(" ++ foldr (\x s -> s++"," ++prettyParam x ) (prettyParam p1) ps ++ ")"
 
 -- build string representing a Condition data type
@@ -365,7 +367,7 @@ functionParser = Procedure <$>
 -- parses a function call and its parameters
 functionCall :: Parser Expr
 functionCall = whitespace(
-  Call <$> identifier <*> parens (sep1 param (symbol ",")))
+  Call <$> identifier <*> parens (sep1 callParam (symbol ",")))
 
 
 -- parses the condition of an if statement
@@ -462,3 +464,52 @@ runFile file xs = eval <$> p <*> (f <$> p) <*> pure xs
   where p = compile <$> readFile file
         f (Program ps) = name (last ps)
         name (Procedure n _ _) = n
+
+
+genFunc :: Gen String
+genFunc = vectorOf 3 (elements "fghk")
+
+genId :: Gen String
+genId = vectorOf 3 (elements "abcde")
+
+instance Arbitrary Comparator where
+  arbitrary = oneof [pure Eq, pure Lt, pure Gt]
+
+instance Arbitrary Condition where
+  arbitrary = Cond <$> (arbitrary :: Gen Comparator) <*> (arbitrary :: Gen Expr) <*> (arbitrary :: Gen Expr)
+
+instance Arbitrary Param where
+  arbitrary = Param <$> (arbitrary :: Gen Expr)
+
+instance Arbitrary Expr where
+  arbitrary = resize 2 $ sized arbexpr
+    where
+      arbexpr 0 = oneof [IntConst <$> (arbitrary :: Gen Integer), Var <$> genId]
+      arbexpr n = oneof
+        [
+          IntConst <$> (arbitrary :: Gen Integer),
+          Var <$> genId,
+          Mult <$> arbexpr (n `div` 2) <*> arbexpr (n `div` 2),
+          Add <$> arbexpr (n `div` 2) <*> arbexpr (n `div` 2),
+          Sub <$> arbexpr (n `div` 2) <*> arbexpr (n `div` 2),
+          If <$> (arbitrary :: Gen Condition) <*> arbexpr (n `div` 2) <*> arbexpr (n `div` 2),
+          Call <$> genFunc <*> resize 2 (listOf1 (arbitrary :: Gen Param))
+        ]
+
+instance Arbitrary Procedure where
+  arbitrary = Procedure <$> 
+              genFunc <*> 
+              resize 2 (listOf (Param <$> oneof [IntConst <$> (arbitrary :: Gen Integer), Var <$> genId])) <*> 
+              (arbitrary :: Gen Expr)
+
+instance Arbitrary Prog where
+  arbitrary = Program <$> resize 2 (listOf (arbitrary :: Gen Procedure))
+
+compileExpr :: String -> Expr
+compileExpr s = fst . head $ runParser expr (Stream s)
+
+prop_expr :: Expr -> Bool
+prop_expr e = compileExpr (prettyExpr e) == e
+
+prop_prog :: Prog -> Bool
+prop_prog p = compile (pretty p) == p

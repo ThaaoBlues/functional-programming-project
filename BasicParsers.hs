@@ -121,11 +121,11 @@ string = foldr (\ x -> (<*>) ((:) <$> char x)) (pure [])
 
 -- parses an identifier surrounded by whites-pace
 identifier :: Parser String
-identifier = whitespace (some (letter <|> dig))
+identifier = whitespace ((:) <$> letter <*> many (letter <|> dig))
 
 -- parses an integer surrounded by whitespace.
 integer :: Parser Integer
-integer = read <$> whitespace (some dig)
+integer = read <$> whitespace ((++) <$> option "" (string "-") <*> some dig)
 
 -- parses a given string surrounded by white-space
 symbol :: String->Parser String
