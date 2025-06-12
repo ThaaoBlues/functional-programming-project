@@ -1,0 +1,7 @@
+div x y :=
+   if (x < y) then
+     {
+       0
+     } else {
+       1 + div ((x-y), y)
+     };
