@@ -10,6 +10,7 @@ module MicroFP where
 import Control.Applicative
 import PComb
 import BasicParsers
+import Data.Traversable (for)
 
 
 -- FP3.1 
@@ -263,7 +264,9 @@ testEvalSum = eval sumProg "sum" [5] == 15
 testEvalFib :: Bool
 testEvalFib = eval fib "fib" [5] == 5
 
-testFibonacciPatternMatching = eval fibonacci "fibonacci" [5] == 5
+testEvalFibonacci :: Bool
+testEvalFibonacci = eval fibonacci "fibonacci" [5] == 5
+
 
 -- FP4.1
 
@@ -299,88 +302,86 @@ term = factor `chainl1` mulOp
 
 -- parses left side of Add/sub operations
 addOp :: Parser (Expr -> Expr -> Expr)
-addOp =  (whitespace (char '+') *> pure Add)
-     <|> (whitespace (char '-') *> pure Sub)
+addOp =  symbol "+" *> pure Add
+     <|> symbol "-" *> pure Sub
 
 -- parses left side of Mult operations
 mulOp :: Parser (Expr -> Expr -> Expr)
-mulOp = whitespace (char '*') *> pure Mult
-
-
--- OLD VERSION, recursive
--- expr' :: Parser Expr
--- expr' =  
---        Add <$> term <*> (whitespace (char '+') *> expr) <|>
---        Sub <$> term <*> (whitespace (char '-') *> expr) <|>
---        term
-
--- term' :: Parser Expr
--- term' = Mult <$> factor <*> (whitespace (char '*') *> term) <|> factor
+mulOp = symbol "*" *> pure Mult
 
 
 factor :: Parser Expr
-factor = 
-  intConst
-  <|> parens expr
+factor =
+  functionCall
   <|> ifExpr
-  <|> functionCall
+  <|> parens expr
   <|> variable -- don't move variable from here as it could eat identifier of function calls
+  <|> intConst
 
-
-
+-- parses an integer and put it as an expression
 intConst :: Parser Expr
 intConst = IntConst <$> integer
 
+-- parses a variable name
 variable :: Parser Expr
-variable = Var <$> some (letter <|> dig)
+variable = Var <$> identifier
 
 
 
-
+-- parses an if statement
 ifExpr :: Parser Expr
 ifExpr =
-  whitespace (string "if") *>
-  ( If <$> whitespace (parens condition) <*>
+  symbol "if" *>
+  ( If <$> parens condition <*>
   
-  (whitespace (string "then") *>
+  (symbol "then" *>
   
-  whitespace (braces (whitespace expr) ) )<*> -- Then
+  braces expr )<*> -- Then
   
-  (whitespace (string "else") *>
+  (symbol "else" *>
   
-  whitespace (braces (whitespace expr)) ) -- Else
+  braces expr) -- Else
   
   )
 
+-- parses a function call parameter
+callParam :: Parser Param
+callParam = Param <$> whitespace expr
 
-param :: Parser Param
-param = Param <$> expr
+-- parses a function formal parameters
+formalParam :: Parser Param
+formalParam = Param <$> ((Var <$> identifier) <|> (IntConst <$> integer) )
 
+-- parses a function declaration and its body
 functionParser :: Parser Procedure 
-functionParser = whitespace(Procedure <$>
+functionParser = Procedure <$>
   identifier <*> 
-  sep param (char ' ') <*>
-  (whitespace (string ":=") *> 
-  whitespace expr) <*
-  char ';')
+  many formalParam <*>
+  ( symbol ":=" *> 
+  expr <*
+  symbol ";")
 
+
+-- parses a function call and its parameters
 functionCall :: Parser Expr
 functionCall = whitespace(
-  Call <$> identifier <*> parens (sep1 param (whitespace(char ','))))
+  Call <$> identifier <*> parens (sep1 param (symbol ",")))
 
 
+-- parses the condition of an if statement
 condition :: Parser Condition
 -- funky function to re-order arguments to the Cond data constructor
-condition = (\e1 cmp e2-> Cond cmp e1 e2) <$> expr <*>(whitespace comparator) <*> expr  
+condition = (\e1 cmp e2-> Cond cmp e1 e2) <$> expr <*>comparator <*> expr  
 
-  -- pure (Cond cmp e1 e2)
-
+-- parses the comparator of an if statement condition
 comparator :: Parser Comparator
 comparator =
-      Eq <$ string "=="
-  <|> Lt <$ char '<'
-  <|> Gt <$ char '>'
+      Eq <$ symbol "=="
+  <|> Lt <$ symbol "<"
+  <|> Gt <$ symbol ">"
 
+
+-- parses all function declared in a program
 program :: Parser Prog
 program = Program <$> whitespace (some functionParser)
 
@@ -451,8 +452,9 @@ testProgramParser =
 -- FP4.2
 
 compile :: String -> Prog
-compile s = fst. head $ runParser program (Stream s)
-
+compile s = case runParser program (Stream s) of
+    [] -> error "Impossible to parse program. (Missing semicolon ?)"
+    result -> fst. head $ result
 testcompile = compile "fib n := if (n < 3) then {1} else {fib (n-1) + fib (n-2)};"
 
 runFile :: FilePath -> [Integer] -> IO Integer
